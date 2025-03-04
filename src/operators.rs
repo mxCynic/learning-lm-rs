@@ -71,7 +71,23 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
 }
 
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
-    todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    // todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    let data_x = x.data();
+    let data_w = w.data();
+    let mdata_y = unsafe { y.data_mut() };
+    let strides = w.shape()[0];
+
+    let square_x_norms: Vec<f32> = data_x
+        .chunks(strides)
+        .flat_map(|chunks| {
+            let sum: f32 = chunks.iter().map(|x| x.powi(2)).sum();
+            vec![sum / strides as f32; strides]
+        })
+        .collect();
+
+    for (i, y2) in mdata_y.iter_mut().enumerate() {
+        *y2 = (data_x[i] * data_w[i % strides]) / (square_x_norms[i] + epsilon).sqrt()
+    }
 }
 
 // y = silu(x) * y
@@ -83,13 +99,40 @@ pub fn swiglu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
     // let _y = unsafe { y.data_mut() };
     // let _x = x.data();
 
-    todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
+    // todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
+    let y1 = unsafe { y.data_mut() };
+
+    for (i, y_) in y1.iter_mut().enumerate() {
+        *y_ *= (1. / (1. + f32::exp(-x.data()[i]))) * x.data()[i];
+    }
 }
 
 // C = beta * C + alpha * A @ B^T
 // hint: You don't need to do an explicit transpose of B
 pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor<f32>, alpha: f32) {
-    todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+    // todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+
+    let data_a = a.data();
+    let data_b = b.data();
+    let data_c = unsafe { c.data_mut() };
+
+    let m = a.shape()[0];
+    let k = a.shape()[1];
+    let n = b.shape()[0];
+
+    let mut a_times_b: Vec<f32> = Vec::new();
+
+    for i in 0..m {
+        for j in 0..n {
+            let element = (0..k).map(|x| data_a[i * k + x] * data_b[j * k + x]).sum();
+            a_times_b.push(element);
+        }
+    }
+
+    for (i, c_ele) in data_c.iter_mut().enumerate() {
+        *c_ele *= beta;
+        *c_ele += alpha * a_times_b[i];
+    }
 }
 
 // Dot product of two tensors (treated as vectors)
