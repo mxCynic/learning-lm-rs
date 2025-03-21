@@ -93,8 +93,9 @@ pub fn rope<T: Copy + Default + Float>(y: &mut Tensor<T>, start_pos: usize, thet
 pub fn masked_softmax<T: Copy + Default + DivAssign + Sum + Float>(y: &mut Tensor<T>) 
 ```
 
-其中可以看淡FromBytes trait，这是另一个需要完成的点，我们要能加载混合精度，就需要从u8转化成我们需要的类型，
-我们给这些类型实现这个trait，
+其中可以看到为Llama类型和LLamaParams类型实现泛型时引入了FromBytes trait，
+这是另一个需要完成的点，我们要能加载混合精度，就需要从u8转化成我们需要的类型，
+这个trait就能保证我们的类型能安全的实现我们的转化,我们给这些类型（f32,f16,bf16)实现这个trait，
 ```
 pub trait FromBytes: Sized {
     fn from_bytes(bytes: &[u8]) -> Vec<Self>;
@@ -109,7 +110,7 @@ pub trait FromBytes: Sized {
 npm install 
 npm run dev
 
-前端仓库运行:
+后端仓库运行:
 cargo run --bin backend
 ```
 效果如下
