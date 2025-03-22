@@ -1,8 +1,10 @@
 use axum::http::Method;
 use axum::{routing::post, Json, Router};
 use axum_server::Server;
+use learning_lm_rs::kvcache::KVCache;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::sync::{Mutex, OnceLock};
 use tower_http::cors::CorsLayer;
 
 use askama::Template;
@@ -12,6 +14,8 @@ use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 static MODEL: OnceCell<model::Llama<f32>> = OnceCell::new();
+// static CACHE: OnceCell<KVCache<f32>> = OnceCell::new();
+static CACHE: OnceLock<Mutex<KVCache<f32>>> = OnceLock::new();
 static TOKENIZER: OnceCell<Tokenizer> = OnceCell::new();
 
 #[derive(Deserialize)]
@@ -81,7 +85,9 @@ async fn chat(Json(payload): Json<ChatRequest>) -> Json<OutputText> {
         let model_dir = PathBuf::from(project_dir).join("models").join("chat");
         Tokenizer::from_file(model_dir.join("tokenizer.json")).unwrap()
     });
+    let cache = CACHE.get_or_init(|| Mutex::new(llama.new_cache()));
 
+    let mut cache_data = cache.lock().unwrap();
     // 构建提示模板
     let prompt = ChatPrompt {
         messages: payload.messages,
@@ -95,8 +101,7 @@ async fn chat(Json(payload): Json<ChatRequest>) -> Json<OutputText> {
     let input_ids = encoding.get_ids();
 
     // 生成回复
-    let mut cache = llama.new_cache();
-    let output_ids = llama.generate(&mut cache, input_ids, 500, 0.8, 30, 1.0);
+    let output_ids = llama.generate(&mut (*cache_data), input_ids, 500, 0.8, 30, 1.0);
     let response = tokenizer.decode(&output_ids, true).unwrap();
     let cleaned_response = response
         .trim()
