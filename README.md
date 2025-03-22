@@ -113,7 +113,23 @@ npm run dev
 后端仓库运行:
 cargo run --bin backend
 ```
-效果如下
+
+#### 难点 
+
+这里的难点在于chat模型，我们应该在后端只加载一次模型、token、和KVcache。我通过OnceCell,OnceLock完成对他们的处理  
+具体来说模型加载和token，通过OnceCell嵌套我的类型，get_or_init()函数来初始化或者借用。  
+而KVcache不太一样，他是初始化一次的可变值，
+```
+static MODEL: OnceCell<model::Llama<f32>> = OnceCell::new();
+static CACHE: OnceLock<Mutex<KVCache<f32>>> = OnceLock::new();
+static TOKENIZER: OnceCell<Tokenizer> = OnceCell::new();
+
+```
+我通过这样的处理让他们能够只初始化一次,再多论的请求中不会多次初始化
+
+
+#### 效果如下
+
 ![Story](./picture/F42726DE3AEC9BE542821F40C026C726.png)
 ![Chat](./picture/40B5BA956BAB47DE66C4DBD0A13182F9.png)
 

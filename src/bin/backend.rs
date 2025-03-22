@@ -14,7 +14,6 @@ use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 static MODEL: OnceCell<model::Llama<f32>> = OnceCell::new();
-// static CACHE: OnceCell<KVCache<f32>> = OnceCell::new();
 static CACHE: OnceLock<Mutex<KVCache<f32>>> = OnceLock::new();
 static TOKENIZER: OnceCell<Tokenizer> = OnceCell::new();
 
